@@ -1,0 +1,65 @@
+name: adkxbox-tools
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: adkxbox-backend
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env
+    volumes:
+      - backend-data:/app/data
+      - backend-uploads:/app/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - adkxbox-net
+    labels:
+      - "traefik.enable=true"
+      # （如用 Caddy 不需要这个）
+
+  redis:
+    image: redis:7-alpine
+    container_name: adkxbox-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - adkxbox-net
+
+  # Caddy 反代（生产 HTTPS）
+  caddy:
+    image: caddy:2-alpine
+    container_name: adkxbox-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - adkxbox-net
+    depends_on:
+      - backend
+
+volumes:
+  backend-data:
+  backend-uploads:
+  redis-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  adkxbox-net:
+    driver: bridge

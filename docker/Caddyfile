@@ -1,0 +1,29 @@
+# adkxbox-tools Caddy 配置
+#
+# 部署时把 tools.adkxbox.dpdns.org 换成你的域名
+# Caddy 会自动申请 Let's Encrypt 证书
+
+# 域名 + HTTPS
+tools.adkxbox.dpdns.org {
+    encode gzip zstd
+
+    # 后端 API
+    reverse_proxy backend:8000 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # 日志
+    log {
+        output file /data/caddy/access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+    }
+}
+
+# 备用：HTTP only（本地开发）
+:80 {
+    reverse_proxy backend:8000
+}
