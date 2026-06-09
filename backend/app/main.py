@@ -41,7 +41,10 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # 限流
+    # 限流：自定义 IP 限流中间件（避免 slowapi 装饰器在 body/form 路由 500）
+    from app.core.middleware import IPRateLimitMiddleware
+    app.add_middleware(IPRateLimitMiddleware)
+    # 慢 API 慢调用兜底
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
